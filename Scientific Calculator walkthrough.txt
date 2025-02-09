@@ -1,0 +1,10 @@
+Scientific Calculator walkthrough:
+
+Take string input
+Use lexer to read char by char and parse through to tokens:
+If char number, then read all numbers.
+If char -, then expect number.
+If char (), then parse expression.
+Else, throw error.
+
+Once lexer is finished, parse tokens through Parser:

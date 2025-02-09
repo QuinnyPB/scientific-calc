@@ -1,10 +1,9 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <string>
+#include <tuple>
+#include "lexer.h"
 
-Token constructToken(string input);
-void parseExpression(string input);
-Token tokenize(string input);
+// void parseExpression(string input);
 
 #endif
