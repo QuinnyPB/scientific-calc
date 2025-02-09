@@ -13,7 +13,9 @@ class Lexer {
   char ch='a';
 
   public:
+    Lexer(){};
     Lexer(std::string &input);
+    void insertInput(std::string &input);
     void readChar();  
     std::vector<Token> tokenize();
 };

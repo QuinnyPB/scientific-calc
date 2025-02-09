@@ -6,6 +6,11 @@ Lexer::Lexer(string &input) : input(input), curr(0), next(0), ch('a') {
   readChar();
 }  
 
+void Lexer::insertInput(string& input) {
+  Lexer::input = input;
+  readChar();
+}
+
 void Lexer::readChar() {
   if (next >= input.length()){
     ch = 0;
