@@ -1,14 +1,73 @@
 #include "lexer.h"
+#include "errorstack.h"
 
 using namespace std;
 
-Lexer::Lexer(string &input) : input(input), curr(0), next(0), ch('a') {      
+Lexer::Lexer(string &input) : input(input), curr(0), next(0) {      
   readChar();
 }  
 
-void Lexer::insertInput(string& input) {
-  Lexer::input = input;
-  readChar();
+vector<Token> Lexer::tokenize() {  
+  vector<Token> tokens;
+
+  while (curr < input.length()) {   
+    Token t;
+    skipwhitespace();  
+
+    cout << "curr ch: " << input[curr] << "\t next ch: " << input[next] <<"\n";
+        
+    switch (ch) {
+    case '+':
+      t = Token(TokenType::PLUS, ch);
+      break;
+    case '-':
+      t = Token(TokenType::MINUS, ch);
+      break;
+    case '*':
+      t = Token(TokenType::ASTERISK, ch);
+      break;
+    case '/':
+      t = Token(TokenType::SLASH, ch);
+      break;
+    case '(':
+      t = Token(TokenType::LPAREN, ch);
+      break;
+    case ')':
+      t = Token(TokenType::RPAREN, ch);
+      break;
+    case '%':
+      t = Token(TokenType::PERCENT, ch);
+      break;
+    default:
+    // check if is illegal letter
+    // NOTE: REWRITE THIS FOR FUTURE SCIENCE FUNCTIONS
+      if (isLetter(ch)) {
+        // cout << "is letter\n";   
+        t = Token(TokenType::UNKNOWN, ch);
+
+      } 
+      else if (isDigit(ch)) {
+        t.type = TokenType::NUMBER;          
+        t.literal = readNumber();        
+        tokens.push_back(t);
+        continue; // required for avoiding double readChar() call from readNumber()
+      } 
+      else {
+        t = Token(TokenType::UNKNOWN, ch);
+      }
+      break;
+    }     
+
+    
+    tokens.push_back(t);
+    if (peekChar() != 0) {
+      readChar();
+    } else {
+      return tokens;
+    }
+  }
+
+  return tokens;
 }
 
 void Lexer::readChar() {
@@ -21,76 +80,49 @@ void Lexer::readChar() {
   next++;
 }
 
-vector<Token> Lexer::tokenize() {
-  vector<Token> tokens_list;
-  
-  for (int i=0; i<input.length(); i++) {
-    char c = input[i];
-    Token t = Token();
-    
-    cout << i  << ": " << c << "\n";
-    
-    switch (input[i]) {
-    case ' ':
-      t.type = TokenType::SPACE;
-      t.literal = " ";
-      break;
-    case '+':
-      t.type = TokenType::PLUS; 
-      t.literal = "+";
-      tokens_list.push_back(t);
-      break;
-    case '-':
-      t.type = TokenType::MINUS;
-      t.literal = "-";
-      break;
-    case '*':
-      t.type = TokenType::ASTERISK;
-      t.literal = "*";
-      break;
-    case '\\':
-      t.type = TokenType::SLASH;
-      t.literal = "\\";
-      break;
-    case '(':
-      t.type = TokenType::LPAREN;
-      t.literal = "(";
-      break;
-    case ')':
-      t.type = TokenType::RPAREN;
-      t.literal = ")";
-      break;
-    case '%':
-      t.type = TokenType::PERCENT;
-      t.literal = "%";
-      break;
-    default:
-    // check if is illegal letter
-    // NOTE: REWRITE THIS FOR FUTURE SCIENCE FUNCTIONS
-      if (isalpha(static_cast<int>(c))) {
-        cout << "is letter\n"; 
-        
-        break;
-      } else {
-        t.type = TokenType::NUMBER;          
-        int start = i;
+char Lexer::peekChar() {
+  if (next >= input.length()) {
+    return 0;
+  } else {
+    return input[next];
+  }
+}
 
-        // go over each char while it is a number, to get whole number
-        while (isdigit(input[i]) && i<input.length()) {          
-          i++;
-        }
+void Lexer::reverseChar() {
+  if (curr == 0) {
+    return;
+  } else {
+    next = curr;
+    curr--;    
+    ch = input[curr];
+  }
+}
 
-        string s =  input.substr(start, i);
-        t.literal = s;
-        int num = stoi(s);
-        cout << "is numeral\n";
-      }
-      break;
-    }     
-  
+void Lexer::insertInput(string& input) {
+  Lexer::input = input;
+  readChar();
+}
+
+// RUNS OVER INPUT LENGTH, has to do with needing space at the end
+string Lexer::readNumber() {
+  int pos = curr;
+  while (curr < input.length() && isDigit(input.at(curr))) {
     readChar();
   }
 
-  return tokens_list;
+  return input.substr(pos, curr - pos);
 }
 
+void Lexer::skipwhitespace() {
+  while (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+    readChar();
+  };
+}
+
+bool Lexer::isLetter(char ch) {
+  return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ch == '_'; 
+}
+
+bool Lexer::isDigit(char ch) {
+  return '0' <= ch && ch <= '9';
+}

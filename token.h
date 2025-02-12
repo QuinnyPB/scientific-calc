@@ -14,6 +14,7 @@ enum class TokenType {
   SLASH,
   ASTERISK,
   PERCENT,
+  UNKNOWN,
   END,
   SPACE,
 };
@@ -28,8 +29,7 @@ const std::unordered_map<TokenType, std::string> tokens_map = {
   {TokenType::ASTERISK, "ASTERISK"},
   {TokenType::PERCENT, "PERCENT"},
   {TokenType::SPACE, "SPACE"},
-  // {TokenType::INTEGER, "INTEGER"},
-  // {TokenType::INTEGER, "INTEGER"},
+  {TokenType::UNKNOWN, "UNKNOWN"},
   {TokenType::END, "END"},
 };
 
@@ -40,6 +40,7 @@ struct Token {
   public:
     Token(){};
     Token(enum TokenType t, const std::string& l);
+    Token(enum TokenType t, const char ch);
     Token constructToken(std::string &input);
     std::string toString();
 };

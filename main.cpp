@@ -1,62 +1,38 @@
 // #include <stdio.h>
 #include <map>
 #include "parser.h"
+#include "errorstack.h"
 
 using namespace std;
-
-enum OPERATIONS {
-  ADDITION,
-  SUBTRACT,
-  MULTIPLICATION,
-  DIVISION,
-};
-
-map<char, OPERATIONS> operationTypes = {
-  {'+', OPERATIONS::ADDITION},
-  {'-', OPERATIONS::SUBTRACT},
-  {'*', OPERATIONS::MULTIPLICATION},
-  {'/', OPERATIONS::DIVISION},
-};
 
 int main()
 {
   string input;
-
-  // while (true) {
-  //   cout << "Enter your expression to be calculated: \n";
-  //   // cin >> input;
-  //   getline(cin, input);
-  //   // converts string to char array
-  //   int n = input.length();
-    
-  //   Lexer l = Lexer(input);
-  //   vector<Token> tokens = l.tokenize();
-  //   cout << "Tokens: \n";
-  //   for (Token t : tokens) {
-  //     cout << t.toString();
-  //   }
-  // }
-
+  ErrorStack errors = ErrorStack(); 
   cout << "Enter your expression to be calculated: \n";
-  char ch, prev = '\0';
-  bool isIllegal = false;
 
-  while (ch = getchar() != '\n') {    
+  while (true) {
+    getline(cin, input);
+    // input = "1+ 2 - 3 * 4";
     
-    if (isIllegal) {
-      
-    }
-    
-    Lexer l = Lexer(input);
-    vector<Token> tokens = l.tokenize();
-    cout << "Tokens: \n";
+    Lexer lexer = Lexer(input);
+    vector<Token> tokens = lexer.tokenize();
+
+    cout << "TOKEN STACK: \n";
     for (Token t : tokens) {
       cout << t.toString();
     }
+
+    cout << "ERROR STACK: \n";
+    for (string err : errors.stack) {
+      cout << err << "\n";
+    }
+
+    cout << "<< END OF CALC >> \n";
   }
-  
+
   return 0; 
-}
+} 
 
 
 

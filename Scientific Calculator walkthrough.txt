@@ -8,3 +8,30 @@ If char (), then parse expression.
 Else, throw error.
 
 Once lexer is finished, parse tokens through Parser:
+create list of functions for handling different expressions: 
+	prefix (e.g. -1)
+	infix (e.g. 1 - 1)
+	
+New Method: Shunting Yard Algorithm
+1.
+Use two stacks; operator (store operators) and output queue stack (for postfix expressions).
+2. Process tokens.
+If number:
+ 	push output queue.
+If operator:
+	pop from operator stack if  top has >= precedence.
+	push operator onto stack.
+If (:
+	push to stack.
+if ):
+	pop until ( is found.
+At end:
+	pop all remaining operators to output.
+
+EXAMPLE:
+Step			Stack
+3 → push		[3]
+5 → push		[3, 5]
+2 → push		[3, 5, 2]
+* → 5 * 2 = 10, push	[3, 10]
++ → 3 + 10 = 13, push	[13]

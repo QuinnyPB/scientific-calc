@@ -4,7 +4,7 @@ CC = g++
 # -g for debugging, -Wall for all compiler warnings
 CFLAGS = -g -Wall
 TARGET = main
-OBJECTS = main.cpp lexer.cpp token.cpp
+OBJECTS = main.cpp lexer.cpp token.cpp errorstack.cpp
 
 all: $(TARGET)
 

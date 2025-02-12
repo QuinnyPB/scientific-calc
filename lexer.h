@@ -8,16 +8,22 @@
 
 class Lexer {
   std::string input;
-  char curr = '\0';
-  char next = '\0';
-  char ch='a';
+  int curr = 0;
+  int next = 0;
+  char ch;
 
   public:
     Lexer(){};
     Lexer(std::string &input);
-    void insertInput(std::string &input);
-    void readChar();  
+    std::string readNumber();
     std::vector<Token> tokenize();
+    void readChar();  
+    char peekChar();
+    void reverseChar();
+    void insertInput(std::string &input);
+    void skipwhitespace();
+    bool isLetter(char ch);
+    bool isDigit(char ch);
 };
 
 #endif // LEXER_H
