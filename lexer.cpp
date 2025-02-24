@@ -38,6 +38,12 @@ vector<Token> Lexer::tokenize() {
     case '%':
       t = Token(TokenType::PERCENT, ch);
       break;
+    case '?':
+      t = Token(TokenType::HELP, ch);
+      break;
+    case '\n':
+      t = Token(TokenType::END, ch);
+      break;
     default:
     // check if is illegal letter
     // NOTE: REWRITE THIS FOR FUTURE SCIENCE FUNCTIONS
@@ -49,11 +55,13 @@ vector<Token> Lexer::tokenize() {
       else if (isDigit(ch)) {
         t.type = TokenType::NUMBER;          
         t.literal = readNumber();        
+        // required for avoiding double readChar() call from readNumber()
         tokens.push_back(t);
-        continue; // required for avoiding double readChar() call from readNumber()
+        continue; 
       } 
       else {
-        t = Token(TokenType::UNKNOWN, ch);
+        // t = Token(TokenType::UNKNOWN, ch);
+        t = Token(TokenType::END, '\n');
       }
       break;
     }     
@@ -63,6 +71,7 @@ vector<Token> Lexer::tokenize() {
     if (peekChar() != 0) {
       readChar();
     } else {
+      cout << "returning tokens...\n";
       return tokens;
     }
   }

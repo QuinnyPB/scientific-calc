@@ -13,8 +13,9 @@ create list of functions for handling different expressions:
 	infix (e.g. 1 - 1)
 	
 New Method: Shunting Yard Algorithm
-1.
-Use two stacks; operator (store operators) and output queue stack (for postfix expressions).
+1. Use two stacks. 
+operator (store operators), and 
+output queue stack (for postfix expressions).
 2. Process tokens.
 If number:
  	push output queue.
