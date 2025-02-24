@@ -39,7 +39,10 @@ vector<Token> Lexer::tokenize() {
       t = Token(TokenType::PERCENT, ch);
       break;
     case '?':
-      t = Token(TokenType::HELP, ch);
+      t = Token(TokenType::QUESTIONMARK, ch);
+      break;
+    case 'c':
+      t = Token(TokenType::CLEAR, ch);
       break;
     case '\n':
       t = Token(TokenType::END, ch);

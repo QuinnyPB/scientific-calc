@@ -23,6 +23,7 @@ TokenType getTokenType(char);
 int getAssociativity(char);
 int applyOperator(int, int, char);
 void printHelp();
+void clearInput();
 void print_queue(queue<queue_var>);
 void print_stack(stack<queue_var>);
 
@@ -30,7 +31,8 @@ void print_stack(stack<queue_var>);
 stack<char> operators;
 queue<queue_var> output;
 map<TokenType, int> precedences;  
-
+int result;
+bool previousIsNumber=false;
 
 int main()
 {
@@ -62,7 +64,17 @@ int main()
       // else determine precedence and pop and/or push to operators
       switch (tok.type) {        
       case TokenType::NUMBER:
-        output.push(queue_var(stoi(tok.literal))); // type enforces number into int
+        // output.push(queue_var(stoi(tok.literal))); // type enforces number into int
+        // correct for incorrect user spacing between numbers
+        if (previousIsNumber) {
+          int x = get<int>(output.back());
+          string str = to_string(x);
+          str += tok.literal;
+          output.back() = queue_var(stoi(str));
+        } else {
+          output.push(queue_var(stoi(tok.literal))); // type enforces number into int
+        }
+        previousIsNumber=true;
         break;
 
       case TokenType::PLUS:
@@ -97,10 +109,15 @@ int main()
         break;
 
       // clears screen and prints useful instructions/tips/commands
-      case TokenType::HELP:
+      case TokenType::QUESTIONMARK:
         system("cls");
         printHelp();
-        return 0;
+        break;
+      
+      // clears input from last calculations 
+      case TokenType::CLEAR:
+        clearInput();
+        break;
 
       case TokenType::END:
         // pop entire operator stack to output 
@@ -113,6 +130,7 @@ int main()
         break;
       } // END SWITCH
     }  // END FOR    
+    previousIsNumber=false;
       
     // POP OFF QUEUE AND APPLY OPERATORS
     stack<queue_var> stack;
@@ -134,13 +152,13 @@ int main()
         try
         {
           // calculate value and push back onto stack
-          char op = get<char>(output.front()); output.pop();         
+          char op = get<char>(output.front()); output.pop(); 
           int i = get<int>(stack.top()); stack.pop();
           int j = get<int>(stack.top()); stack.pop();
           int k = applyOperator(j, i, op);
+          
           stack.push(k);  
-          cout << "\t" << i << " " << op << " " << j << " = " << k << "\n"; 
-        
+          cout << "\t" << j << " " << op << " " << i << " = " << k << "\n"; 
         }
         catch(const std::exception& e)
         {
@@ -148,8 +166,9 @@ int main()
         }        
       } 
     } // END WHILE
-    cout << "Result: \n" << stack.top() << "\n";
-
+    result = get<int>(stack.top()); stack.pop();
+    cout << "Result: \n" << result << "\n";
+    
     // clears cin buffer
     cin.clear();
     fflush(stdin);
@@ -160,9 +179,20 @@ int main()
 
 // actual application of an operator onto given values
 int applyOperator(int left, int right, char op) {
+  if (!left) {
+    left = 0;
+  }
+  if (!right) {
+    right = 0;
+  }
   // if (!right && op == '-') {
   //   return -left;
-  // } else if (!right && op != '-') {
+  // } else if (!left && op == '-') {
+  //   return 0 - right;
+  // } else if (!left && !right) {
+  //   return 0;
+  // }
+  // else if (!right && op != '-') {
   //   return NULL;
   // }
 
@@ -188,13 +218,9 @@ int applyOperator(int left, int right, char op) {
 // they are same precedence
 void  handleOperatorPrecedenceSwap(TokenType currType, char op, map<TokenType, int> precedences) {
   cout << "handleOperatorPrecedenceSwap()\n";  
-  // represents top tokens on operator stack
-  // TokenType topToken = getTokenType(operators.top());
-  // int topPrecedence = precedences.at(topToken);
-  
-  cout << "handleOperatorPrecedenceSwap().while\n";
   // pushes top of operator stack onto queue  
   while (!operators.empty()) {
+    // represents top tokens on operator stack  
     TokenType topToken = getTokenType(operators.top());
     int topPrecedence = precedences.at(topToken);    
     
@@ -207,8 +233,8 @@ void  handleOperatorPrecedenceSwap(TokenType currType, char op, map<TokenType, i
     }
   }
   operators.push(op); // regardless, pushes operator onto operator stack
-
-  cout << "handleOperatorPrecedenceSwap().end\n";
+  previousIsNumber=false;
+  
   return;
 }
 
@@ -259,6 +285,11 @@ void printHelp() {
   cout << "This scientific calculator can do the following: \n";
   cout << "'?': Prints this help screen.\n";
   return;
+}
+
+void clearInput() {
+  cout << "clearing...\n";
+  #undef result
 }
 
 // Print the queue
