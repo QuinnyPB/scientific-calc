@@ -14,7 +14,7 @@ vector<Token> Lexer::tokenize() {
     Token t;
     skipwhitespace();  
 
-    cout << "curr ch: " << input[curr] << "\t next ch: " << input[next] <<"\n";
+    // cout << "curr ch: " << input[curr] << "\t next ch: " << input[next] <<"\n";
         
     switch (ch) {
     case '+':

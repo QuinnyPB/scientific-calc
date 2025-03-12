@@ -4,6 +4,7 @@
 #include <stack>
 #include <queue>
 #include <variant>
+#include <format>
 #include "lexer.h"
 #include "errorstack.h"
 
@@ -18,6 +19,7 @@ ostream& operator<<(ostream& os, const queue_var& qv) {
 
 // function initialisationg
 void handleOperatorPrecedenceSwap(TokenType, char, map<TokenType, int>);
+void handleFunctionCall();
 void popStackToQueue();
 TokenType getTokenType(char);
 int getAssociativity(char);
@@ -26,31 +28,44 @@ void printHelp();
 void clearInput();
 void print_queue(queue<queue_var>);
 void print_stack(stack<queue_var>);
+void tests();
+
 
 // global data structures
+ErrorStack errors = ErrorStack(); 
 stack<char> operators;
 queue<queue_var> output;
 map<TokenType, int> precedences;  
-int result;
+int result=0;
 bool previousIsNumber=false;
 
-int main()
+int calculator(string);
+
+int main() {
+  // tests();
+  while (true) { 
+    calculator(""); 
+  }
+}
+
+int calculator(string input="")
 {
   vector<Token> tokens;
-  ErrorStack errors = ErrorStack(); 
-  string input;
+  // string input;
   // setting precedences for order of operations
   precedences.insert(pair<TokenType, int>(TokenType::CARET, 4)); 
+  precedences.insert(pair<TokenType, int>(TokenType::NEGATIVE, 4));
   precedences.insert(pair<TokenType, int>(TokenType::SLASH, 3)); 
   precedences.insert(pair<TokenType, int>(TokenType::ASTERISK, 3)); 
   precedences.insert(pair<TokenType, int>(TokenType::PLUS, 2)); 
   precedences.insert(pair<TokenType, int>(TokenType::MINUS, 2)); 
   
   while (true) {
-    cout << "Enter your expression to be calculated ('?' for help): \n";
-    getline(cin, input);
-    input += "\n";
-    // input = "1+ 2 - 3 * 4";
+    if (input == "") {
+      cout << "Enter your expression to be calculated ('?' for help): \n";
+      getline(cin, input);
+      input += "\n";
+    }
     
     Lexer lexer = Lexer(input);
     tokens = lexer.tokenize();
@@ -78,34 +93,66 @@ int main()
         break;
 
       case TokenType::PLUS:
-        handleOperatorPrecedenceSwap(TokenType::PLUS, op, precedences);
+        // check if unary, push 'p' for plus
+        // if (!previousIsNumber) {
+        //   output.push('p');
+        // } else {
+        //   handleOperatorPrecedenceSwap(TokenType::PLUS, op, precedences);
+        // }        
+          handleOperatorPrecedenceSwap(TokenType::PLUS, op, precedences);
         break;
 
       case TokenType::MINUS:
-        // check if top has precedence, then pop
-        handleOperatorPrecedenceSwap(TokenType::MINUS, op, precedences);
-        // operators.push(op);
+        // The '-' token is at the very start of the input
+        // The '-' token is after a ( token
+        // The '-' token is after a binary operator token such as +
+        // The '-' token is after after another - token        
+        // check if unary, push 'n' for minus
+        if (!previousIsNumber) {
+          handleOperatorPrecedenceSwap(TokenType::MINUS, 'n', precedences);
+        } else {
+          // check if top has precedence, then pop
+          handleOperatorPrecedenceSwap(TokenType::MINUS, op, precedences);
+        }
+          // handleOperatorPrecedenceSwap(TokenType::MINUS, op, precedences);
         break;
 
       case TokenType::ASTERISK:
         // check if top has precedence, then pop
         handleOperatorPrecedenceSwap(TokenType::ASTERISK, op, precedences);
-        // operators.push(op);
         break;
 
       case TokenType::SLASH:
         // check if top has precedence, then pop
         handleOperatorPrecedenceSwap(TokenType::SLASH, op, precedences);
-        // operators.push(op);
         break;
 
       case TokenType::LPAREN:
-        handleOperatorPrecedenceSwap(TokenType::LPAREN, op, precedences);
-        // operators.push(op);
+        operators.push('(');
         break;
 
       case TokenType::RPAREN:
-        handleOperatorPrecedenceSwap(TokenType::RPAREN, op, precedences);
+        { 
+          bool found=false;
+          cout << "found '('\n";
+          cout << "operators.top() = " << operators.top() << "\n";
+          while (operators.top() != '(') {
+            if (operators.empty() && found == false) {
+              cout << "ERROR: MISMATCHED PARENTHESES!\n";
+              return 0;
+            }
+            output.push(queue_var(operators.top()));
+            operators.pop();
+            // NOTE: add functionality for handling functions
+            if (operators.top() == '(') {
+              cout << "found ')'\n";
+              found=true;
+              operators.pop();
+              cout << "operators.top() = " << operators.top() << "\n";
+              break;
+            }
+          }
+        }
         break;
 
       // clears screen and prints useful instructions/tips/commands
@@ -120,8 +167,8 @@ int main()
         break;
 
       case TokenType::END:
-        // pop entire operator stack to output 
-        cout << "Popping stack to queue...\t";
+        // pop entire operator stack to output   
+        cout << "Popping stack to queue...";
         popStackToQueue();
         break;
       
@@ -140,6 +187,7 @@ int main()
       print_queue(output);
       cout << "Stack: \n";
       print_stack(stack); 
+      cout << "\n";
 
       // if output.top is number, push to stack
       if (holds_alternative<int>(output.front())) {
@@ -148,17 +196,19 @@ int main()
       } 
       // if output.top is operator, take two off stack, do operation, push back onto stack
       else {
-        cout << "Doing calculation...\n";
+        // cout << "Doing calculation...\n";
         try
         {
           // calculate value and push back onto stack
           char op = get<char>(output.front()); output.pop(); 
-          int i = get<int>(stack.top()); stack.pop();
-          int j = get<int>(stack.top()); stack.pop();
-          int k = applyOperator(j, i, op);
+          int left, right;
+          
+          right = get<int>(stack.top()); stack.pop();
+          left = get<int>(stack.top()); stack.pop();
+          int k = applyOperator(left, right, op);
           
           stack.push(k);  
-          cout << "\t" << j << " " << op << " " << i << " = " << k << "\n"; 
+          cout << "\t" << left << " " << op << " " << right << " = " << k << "\n"; 
         }
         catch(const std::exception& e)
         {
@@ -167,33 +217,23 @@ int main()
       } 
     } // END WHILE
     result = get<int>(stack.top()); stack.pop();
-    cout << "Result: \n" << result << "\n";
+    // cout << "Result: \n" << result << "\n";
     
     // clears cin buffer
     cin.clear();
     fflush(stdin);
   } // END WHILE
   
-  return 0; 
+  return result; 
 } 
 
 // actual application of an operator onto given values
 int applyOperator(int left, int right, char op) {
-  if (!left) {
-    left = 0;
-  }
-  if (!right) {
-    right = 0;
-  }
-  // if (!right && op == '-') {
-  //   return -left;
-  // } else if (!left && op == '-') {
-  //   return 0 - right;
-  // } else if (!left && !right) {
-  //   return 0;
+  // if (!left && op == '-') {
+  //   left = 0;
   // }
-  // else if (!right && op != '-') {
-  //   return NULL;
+  // if (!right && op == '-') {
+  //   right = 0;
   // }
 
   switch (op) {
@@ -217,14 +257,19 @@ int applyOperator(int left, int right, char op) {
 // handles the functionality of swapping and taking operators off the operator stack if 
 // they are same precedence
 void  handleOperatorPrecedenceSwap(TokenType currType, char op, map<TokenType, int> precedences) {
-  cout << "handleOperatorPrecedenceSwap()\n";  
+  cout << "handleOperatorPrecedenceSwap() for " << op << "\n";  
   // pushes top of operator stack onto queue  
   while (!operators.empty()) {
     // represents top tokens on operator stack  
     TokenType topToken = getTokenType(operators.top());
     int topPrecedence = precedences.at(topToken);    
     
-    if (topPrecedence > precedences.at(currType) && topToken != TokenType::LPAREN) {
+    if (topToken != TokenType::LPAREN && 
+        (topPrecedence > precedences.at(currType) || 
+          (topPrecedence == precedences.at(currType) && getAssociativity(op) == 0)
+        )
+    ) {
+      // cout << "swapping operators...\n";
       output.push(queue_var(operators.top()));
       operators.pop();
       continue;
@@ -233,10 +278,12 @@ void  handleOperatorPrecedenceSwap(TokenType currType, char op, map<TokenType, i
     }
   }
   operators.push(op); // regardless, pushes operator onto operator stack
-  previousIsNumber=false;
+  previousIsNumber=false; // necessary for handling incorrect user spacing
   
   return;
 }
+
+void handleFunctionCall() {}
 
 // pop entire stack onto queue
 void popStackToQueue() {
@@ -259,6 +306,8 @@ TokenType getTokenType(char ch) {
       return TokenType::SLASH;
     case '^':
       return TokenType::CARET;
+    case 'n':
+      return TokenType::NEGATIVE;
     case '%':
       return TokenType::PERCENT;
     case '(':
@@ -274,7 +323,7 @@ TokenType getTokenType(char ch) {
 // returns associativity of the operator
 // left == 0 and right == 1
 int getAssociativity(char ch) {
-  if (ch == '^') {
+  if (ch == '^' || ch == 'n') {
     return 1;
   } else {
     return 0;
@@ -314,4 +363,39 @@ void print_stack(stack<queue_var> q)
       temp.pop();
     }
     cout << '\n';
+}
+
+
+struct TestCase {
+  string input;
+  int expected;
+};
+
+void tests() {
+  vector<TestCase> tests = {
+    TestCase{"1", 1},
+    TestCase{"1 + 1", 2},
+    TestCase{"+ 1", 1},
+    TestCase{"1 + 2 + 3", 6},
+    TestCase{"-1", -1},
+    TestCase{"1 - 1", 0},
+    TestCase{"1 - 3", -2},
+    TestCase{"1 * 2", 2},
+    TestCase{"1 - 1 * 3", -2},
+    TestCase{"1 + 1 * 4 - 2", 3},
+    TestCase{"1  1", 11},
+    TestCase{"11 0 2  3", 11023},
+  };
+
+  for (int i=0; i<tests.size(); i++) {
+    int result = calculator(tests[i].input);
+    if (result != tests[i].expected) {
+      int formatted = printf("Test %s failed:\n\tinput: %s\n\texpected: %s\n\tgot=%s", to_string(i), tests[i].input, to_string(tests[i].expected), to_string(result));
+      cout << formatted << "\n";
+    }
+  }
+
+  errors.print_errors();
+
+  return;
 }
