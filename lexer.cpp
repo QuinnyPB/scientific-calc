@@ -1,5 +1,4 @@
 #include "lexer.h"
-#include "errorstack.h"
 
 using namespace std;
 
@@ -10,7 +9,7 @@ Lexer::Lexer(string &input) : input(input), curr(0), next(0) {
 vector<Token> Lexer::tokenize() {  
   vector<Token> tokens;
 
-  while (curr < input.length()) {   
+  while (curr < int(input.length())) {   
     Token t;
     skipwhitespace();  
 
@@ -83,7 +82,7 @@ vector<Token> Lexer::tokenize() {
 }
 
 void Lexer::readChar() {
-  if (next >= input.length()){
+  if (next >= int(input.length())){
     ch = 0;
   } else {
     ch = input[next];
@@ -93,7 +92,7 @@ void Lexer::readChar() {
 }
 
 char Lexer::peekChar() {
-  if (next >= input.length()) {
+  if (next >= int(input.length())) {
     return 0;
   } else {
     return input[next];
@@ -118,7 +117,7 @@ void Lexer::insertInput(string& input) {
 // RUNS OVER INPUT LENGTH, has to do with needing space at the end
 string Lexer::readNumber() {
   int pos = curr;
-  while (curr < input.length() && isDigit(input.at(curr))) {
+  while (curr < int(input.length()) && isDigit(input.at(curr))) {
     readChar();
   }
 

@@ -6,7 +6,7 @@
 #include <variant>
 #include <format>
 #include "lexer.h"
-#include "errorstack.h"
+#include "errorqueue.h"
 
 using namespace std;
 // used for output queue, so operators and numbers can go onto it e.g. '+' and 1234
@@ -18,40 +18,35 @@ ostream& operator<<(ostream& os, const queue_var& qv) {
 }
 
 // function initialisationg
-void handleOperatorPrecedenceSwap(TokenType, char, map<TokenType, int>);
+void handleOperatorPrecedenceSwap(TokenType, char);
 void handleFunctionCall();
 void popStackToQueue();
 TokenType getTokenType(char);
-int getAssociativity(char);
+bool isUnary(char, int, vector<Token>*);
+bool isOperator(string&);
+void handleOperator(char, stack<queue_var> *stack);
 int applyOperator(int, int, char);
+int getAssociativity(char);
 void printHelp();
 void clearInput();
 void print_queue(queue<queue_var>);
 void print_stack(stack<queue_var>);
+string queue_to_string(queue<queue_var>);
+string stack_to_string(stack<queue_var>);
 void tests();
 
-
 // global data structures
-ErrorStack errors = ErrorStack(); 
+ErrorQueue errors_list = ErrorQueue(); 
 stack<char> operators;
 queue<queue_var> output;
 map<TokenType, int> precedences;  
-int result=0;
+int result;
 bool previousIsNumber=false;
+bool isCustomInput=false;
 
 int calculator(string);
 
 int main() {
-  // tests();
-  while (true) { 
-    calculator(""); 
-  }
-}
-
-int calculator(string input="")
-{
-  vector<Token> tokens;
-  // string input;
   // setting precedences for order of operations
   precedences.insert(pair<TokenType, int>(TokenType::CARET, 4)); 
   precedences.insert(pair<TokenType, int>(TokenType::NEGATIVE, 4));
@@ -59,27 +54,48 @@ int calculator(string input="")
   precedences.insert(pair<TokenType, int>(TokenType::ASTERISK, 3)); 
   precedences.insert(pair<TokenType, int>(TokenType::PLUS, 2)); 
   precedences.insert(pair<TokenType, int>(TokenType::MINUS, 2)); 
+
+  // for using test set
+  tests();
+
+  // for custom use
+  // while (true) { 
+  //   int res = calculator(""); 
+  //   printf("%d\n", res);
+  // }
+}
+
+int calculator(string input="")
+{
+  vector<Token> tokens;
   
-  while (true) {
-    if (input == "") {
+    while (input == "") {
       cout << "Enter your expression to be calculated ('?' for help): \n";
       getline(cin, input);
-      input += "\n";
+      isCustomInput = true;
     }
+    input += "\n";
+
+    errors_list.add_error(input.c_str());
+    
+    // record initial input for error list
+    errors_list.set_input(input);
     
     Lexer lexer = Lexer(input);
     tokens = lexer.tokenize();
     
-    cout << "starting token analysis loop...\n";
-    for (Token tok : tokens) {
+    for (int i=0; i < int(tokens.size()); i++) {
+      Token tok = tokens[i];
       char op = tok.literal[0]; // if operator than convert to char, else ignore this var
+
+      // information for error queue if it appears
+      string errstr = tok.toString().c_str();
+      errors_list.add_error(errstr);
       
-      cout << "TOKEN: " << op << "\n";
       // push to output if number,
       // else determine precedence and pop and/or push to operators
       switch (tok.type) {        
       case TokenType::NUMBER:
-        // output.push(queue_var(stoi(tok.literal))); // type enforces number into int
         // correct for incorrect user spacing between numbers
         if (previousIsNumber) {
           int x = get<int>(output.back());
@@ -93,38 +109,28 @@ int calculator(string input="")
         break;
 
       case TokenType::PLUS:
-        // check if unary, push 'p' for plus
-        // if (!previousIsNumber) {
-        //   output.push('p');
-        // } else {
-        //   handleOperatorPrecedenceSwap(TokenType::PLUS, op, precedences);
-        // }        
-          handleOperatorPrecedenceSwap(TokenType::PLUS, op, precedences);
+        handleOperatorPrecedenceSwap(TokenType::PLUS, op);
         break;
 
       case TokenType::MINUS:
-        // The '-' token is at the very start of the input
-        // The '-' token is after a ( token
-        // The '-' token is after a binary operator token such as +
-        // The '-' token is after after another - token        
-        // check if unary, push 'n' for minus
-        if (!previousIsNumber) {
-          handleOperatorPrecedenceSwap(TokenType::MINUS, 'n', precedences);
+        // check if unary, make negative by pushing 'n' 
+        if (isUnary(op, i, &tokens)) {
+          handleOperatorPrecedenceSwap(TokenType::NEGATIVE, 'n');
         } else {
           // check if top has precedence, then pop
-          handleOperatorPrecedenceSwap(TokenType::MINUS, op, precedences);
+          handleOperatorPrecedenceSwap(TokenType::MINUS, op);
         }
-          // handleOperatorPrecedenceSwap(TokenType::MINUS, op, precedences);
+          // handleOperatorPrecedenceSwap(TokenType::MINUS, op);
         break;
 
       case TokenType::ASTERISK:
         // check if top has precedence, then pop
-        handleOperatorPrecedenceSwap(TokenType::ASTERISK, op, precedences);
+        handleOperatorPrecedenceSwap(TokenType::ASTERISK, op);
         break;
 
       case TokenType::SLASH:
         // check if top has precedence, then pop
-        handleOperatorPrecedenceSwap(TokenType::SLASH, op, precedences);
+        handleOperatorPrecedenceSwap(TokenType::SLASH, op);
         break;
 
       case TokenType::LPAREN:
@@ -138,17 +144,17 @@ int calculator(string input="")
           cout << "operators.top() = " << operators.top() << "\n";
           while (operators.top() != '(') {
             if (operators.empty() && found == false) {
-              cout << "ERROR: MISMATCHED PARENTHESES!\n";
+              string errstr = "calculator.switch-RPAREN: Error: Mismatched parentheses\n";
+              errors_list.add_error(errstr);
               return 0;
             }
             output.push(queue_var(operators.top()));
             operators.pop();
             // NOTE: add functionality for handling functions
             if (operators.top() == '(') {
-              cout << "found ')'\n";
               found=true;
               operators.pop();
-              cout << "operators.top() = " << operators.top() << "\n";
+              printf("found )\noperators.top() = %c\n", operators.top());
               break;
             }
           }
@@ -168,12 +174,13 @@ int calculator(string input="")
 
       case TokenType::END:
         // pop entire operator stack to output   
-        cout << "Popping stack to queue...";
+        errors_list.add_error("Popping stack to queue...");
         popStackToQueue();
         break;
       
       default:
-        cout << "cannot handle " << tok.toString() << "\n"; 
+        string errstr = "calculator.switch-default: cannot handle " + tok.toString();
+        errors_list.add_error(errstr);
         break;
       } // END SWITCH
     }  // END FOR    
@@ -183,59 +190,92 @@ int calculator(string input="")
     stack<queue_var> stack;
     // pop queue one by one into new stack and apply operators onto last two elements as they come    
     while (!output.empty()) {    
-      cout << "Queue:\n";
-      print_queue(output);
-      cout << "Stack: \n";
-      print_stack(stack); 
-      cout << "\n";
-
+      errors_list.add_error("Queue: " + queue_to_string(output));
+      errors_list.add_error("Stack: " + stack_to_string(stack));
+      
       // if output.top is number, push to stack
       if (holds_alternative<int>(output.front())) {
         stack.push(output.front());        
         output.pop();
       } 
-      // if output.top is operator, take two off stack, do operation, push back onto stack
+      // if output.top is operator, handle that operator type
+      // take two off stack, do operation, push back onto stack
       else {
-        // cout << "Doing calculation...\n";
-        try
-        {
-          // calculate value and push back onto stack
-          char op = get<char>(output.front()); output.pop(); 
-          int left, right;
-          
-          right = get<int>(stack.top()); stack.pop();
-          left = get<int>(stack.top()); stack.pop();
-          int k = applyOperator(left, right, op);
-          
-          stack.push(k);  
-          cout << "\t" << left << " " << op << " " << right << " = " << k << "\n"; 
-        }
-        catch(const std::exception& e)
-        {
-          std::cerr << e.what() << '\n';
-        }        
+        // calculate value and push back onto stack
+        char op = get<char>(output.front()); output.pop();
+        handleOperator(op, &stack);           
       } 
-    } // END WHILE
-    result = get<int>(stack.top()); stack.pop();
-    // cout << "Result: \n" << result << "\n";
-    
+    } // END INNER WHILE
+    result = get<int>(stack.top()); stack.pop();   
+
     // clears cin buffer
     cin.clear();
     fflush(stdin);
-  } // END WHILE
+
+    // print runtime errors if custom input
+    if (isCustomInput) {
+      errors_list.print_errors();
+      errors_list.clear();
+    }
   
   return result; 
 } 
 
+// The '-' token is at the very start of the input
+// The '-' token is after a ( token
+// The '-' token is after a binary operator token such as +
+// The '-' token is after after another - token    
+bool isUnary(char ch, int currIndex, vector<Token> *tokens) {
+  if (currIndex == 0 && ch == '-') {
+    return true;
+  } 
+  if (*&tokens->at(currIndex - 1).literal == string("(") ) {
+    return true;
+  }
+  string c = tokens->at(currIndex - 1).literal;
+  if (isOperator(c)) {
+    return true;
+  }
+
+  return false;
+}
+
+bool isOperator(string& ch) {
+  if (ch == "+" || ch == "-" || ch == "*" || ch == "/") {
+    return true;
+  }
+  return false;
+}
+
+// handles operator functionality
+void handleOperator(char op, stack<queue_var> *stack) {
+  // string errstr("handling operator '%c' (ASCII: %d)\n", op, op);
+  // errors_list.add_error(errstr);
+
+  try {
+    if (op == 'n') {
+      int& topNum = get<int>(stack->top());
+      topNum *= -1;
+      printf("topStack now %d\n", get<int>(stack->top()));
+    } else {
+      int right = get<int>(stack->top()); stack->pop();
+      int left = get<int>(stack->top()); stack->pop();  
+      queue_var res = applyOperator(left, right, op);  
+      stack->push(res);
+    }
+  }
+  catch(const std::exception& e) {
+    // printf("Cannot handle operator '%c' (ASCII: %d)\n", op, op);
+    string errstr("handleOperator(): Cannot handle operator '%c' (ASCII: %d)", op, op);
+    errors_list.add_error(errstr);
+    std::cerr << e.what() << '\n';
+  } 
+
+}
+
 // actual application of an operator onto given values
 int applyOperator(int left, int right, char op) {
-  // if (!left && op == '-') {
-  //   left = 0;
-  // }
-  // if (!right && op == '-') {
-  //   right = 0;
-  // }
-
+  printf("%d %c %d\n", left, op, right);
   switch (op) {
   case '+':
     return left + right;
@@ -249,34 +289,45 @@ int applyOperator(int left, int right, char op) {
     return left % right;
 
   default:
-    cout << "Unknown operator '" << op << "'\n";
+    // printf("Unknown operator '%c' (ASCII: %d)\n", op, op);
+    string errstr("applyOperator(): Unknown operator '%c' (ASCII: %d)", op, op);
+    errors_list.add_error(errstr);
+    
     return 0;
   }
 }
 
 // handles the functionality of swapping and taking operators off the operator stack if 
 // they are same precedence
-void  handleOperatorPrecedenceSwap(TokenType currType, char op, map<TokenType, int> precedences) {
-  cout << "handleOperatorPrecedenceSwap() for " << op << "\n";  
+void  handleOperatorPrecedenceSwap(TokenType currType, char op) {
   // pushes top of operator stack onto queue  
-  while (!operators.empty()) {
+  int counter=0, operators_size = int(operators.size());
+  while (!operators.empty() || counter > operators_size) {
+    
     // represents top tokens on operator stack  
     TokenType topToken = getTokenType(operators.top());
     int topPrecedence = precedences.at(topToken);    
+    counter++;
     
     if (topToken != TokenType::LPAREN && 
-        (topPrecedence > precedences.at(currType) || 
-          (topPrecedence == precedences.at(currType) && getAssociativity(op) == 0)
-        )
+      (topPrecedence > precedences.at(currType) || 
+      (topPrecedence == precedences.at(currType) && getAssociativity(op) == 0)
+      )
     ) {
-      // cout << "swapping operators...\n";
       output.push(queue_var(operators.top()));
       operators.pop();
       continue;
-    } else {
-      break;
-    }
+    } 
+  
+    break;
   }
+
+  // error check
+  if (counter > operators_size) {
+    string errstr("handleOperatorPrecedenceSwap(): counter exceeded hard limit operators.size() (%d)", operators_size);
+    errors_list.add_error(errstr);
+  }
+  
   operators.push(op); // regardless, pushes operator onto operator stack
   previousIsNumber=false; // necessary for handling incorrect user spacing
   
@@ -287,11 +338,17 @@ void handleFunctionCall() {}
 
 // pop entire stack onto queue
 void popStackToQueue() {
-  while (!operators.empty()) {
+  int counter = 0, operators_size = int(operators.size());
+  while (!operators.empty() || counter > operators_size) {
     output.push(queue_var(operators.top()));
     operators.pop();
+    counter++;
   }
-  cout << "finished popping stack...\n";
+  if (counter > operators_size) {
+    string errstr("popStackToQueue(): counter (%d) exceeded hard limit of operators.size() (%d)", counter, operators_size);
+    errors_list.add_error(errstr);
+  }
+  // cout << "finished popping stack...\n";
 }
 
 TokenType getTokenType(char ch) {
@@ -316,6 +373,8 @@ TokenType getTokenType(char ch) {
       return TokenType::RPAREN;
 
     default:
+      string errstr("getTokenType(): unknown char %c", ch);
+      errors_list.add_error(errstr);
       return TokenType::UNKNOWN;    
   } 
 }
@@ -324,6 +383,7 @@ TokenType getTokenType(char ch) {
 // left == 0 and right == 1
 int getAssociativity(char ch) {
   if (ch == '^' || ch == 'n') {
+    printf("'%c' is right assc\n", ch);
     return 1;
   } else {
     return 0;
@@ -356,15 +416,54 @@ void print_queue(queue<queue_var> q)
 // Print the stack
 void print_stack(stack<queue_var> q)
 {
-    stack<queue_var> temp = q;
-    while (!temp.empty()) {
-        // print for chars
-      cout << temp.top() <<" ";
-      temp.pop();
-    }
-    cout << '\n';
+  stack<queue_var> temp = q;
+  while (!temp.empty()) {
+    // print for chars
+    cout << temp.top() <<" ";
+    temp.pop();
+  }
+  cout << '\n';
 }
 
+string queue_to_string(queue<queue_var> q) {
+  queue<queue_var> temp = q;
+  string str;
+  while (!temp.empty()) {
+    // print for chars
+
+    // either an int or char
+    if (holds_alternative<int>(temp.front())) {
+      int curr = get<int>(temp.front()); 
+      str += to_string(curr);
+    } else {
+      char curr = get<char>(temp.front());
+      str += curr;
+    }
+    str += " ";    
+    
+    temp.pop();
+  }
+  return str;
+}
+
+string stack_to_string(stack<queue_var> q) {
+  stack<queue_var> temp = q;
+  string str;
+  while (!temp.empty()) {
+    // either an int or char
+    if (holds_alternative<int>(temp.top())) {
+      int curr = get<int>(temp.top()); 
+      str += to_string(curr);
+    } else {
+      char curr = get<char>(temp.top());
+      str += curr;
+    }
+    str += " ";    
+    
+    temp.pop();
+  }
+  return str;
+}
 
 struct TestCase {
   string input;
@@ -375,9 +474,14 @@ void tests() {
   vector<TestCase> tests = {
     TestCase{"1", 1},
     TestCase{"1 + 1", 2},
-    TestCase{"+ 1", 1},
+    TestCase{"1 - 1", 0},
+    TestCase{"1 * 1", 1},
+    TestCase{"1 / 1", 1},
+    // TestCase{"+ 1", 1},
     TestCase{"1 + 2 + 3", 6},
-    TestCase{"-1", -1},
+    TestCase{"3 - 2 - 1", 0},
+    TestCase{"1 * 2 * 3", 6},
+    TestCase{"4 / 2 / 1", 2},
     TestCase{"1 - 1", 0},
     TestCase{"1 - 3", -2},
     TestCase{"1 * 2", 2},
@@ -385,17 +489,29 @@ void tests() {
     TestCase{"1 + 1 * 4 - 2", 3},
     TestCase{"1  1", 11},
     TestCase{"11 0 2  3", 11023},
+    TestCase{"-1", -1},
+    TestCase{"1 + -1", 0},
+    TestCase{"1 * -1", -1},
+
   };
 
-  for (int i=0; i<tests.size(); i++) {
-    int result = calculator(tests[i].input);
-    if (result != tests[i].expected) {
-      int formatted = printf("Test %s failed:\n\tinput: %s\n\texpected: %s\n\tgot=%s", to_string(i), tests[i].input, to_string(tests[i].expected), to_string(result));
-      cout << formatted << "\n";
-    }
-  }
+  for ( int i = 0; i < int(tests.size()); i++ ) {
+    printf("TEST: %s\n", tests[i].input.c_str());
+    int res = calculator(tests[i].input.c_str());
+        
+    if (res != tests[i].expected) {
+      printf("Test %d FAILED:\n\tinput: %s\n\texpected: %d\n\tgot=%d\n", i, tests[i].input.c_str(), tests[i].expected, res);
 
-  errors.print_errors();
+      printf("List of errors:\n");
+      errors_list.print_errors();
+    } else {
+      printf("Test %d SUCCESS:\n\tinput: %s\n\tgot: %d\n", i, tests[i].input.c_str(), result);
+    }
+    // clears error list for new test set
+    errors_list.clear();
+    printf("\n");
+  }
 
   return;
 }
+

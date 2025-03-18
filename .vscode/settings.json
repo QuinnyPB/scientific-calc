@@ -106,6 +106,7 @@
     "typeinfo": "cpp",
     "list": "cpp",
     "variant": "cpp",
-    "format": "cpp"
+    "format": "cpp",
+    "span": "cpp"
   }
 }
