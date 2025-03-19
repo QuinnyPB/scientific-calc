@@ -255,8 +255,7 @@ void handleOperator(char op, stack<queue_var> *stack) {
   try {
     if (op == 'n') {
       int& topNum = get<int>(stack->top());
-      topNum *= -1;
-      printf("topStack now %d\n", get<int>(stack->top()));
+      topNum = -topNum;
     } else {
       int right = get<int>(stack->top()); stack->pop();
       int left = get<int>(stack->top()); stack->pop();  
@@ -492,6 +491,8 @@ void tests() {
     TestCase{"-1", -1},
     TestCase{"1 + -1", 0},
     TestCase{"1 * -1", -1},
+    TestCase{"1 + 4 + -1", 4},
+    TestCase{"10 + 2 * -1", 8},
 
   };
 
