@@ -1,14 +1,21 @@
 # Variables
-# COMPILER
-CC = g++
+# compiler version and flags
 # -g for debugging, -Wall for all compiler warnings
-CFLAGS = -g -Wall
+CC = g++
+CFLAGS = -g -Wall -std=c++20
+# sources and object files
+SOURCES = main.cpp lexer.cpp token.cpp errorqueue.cpp
+OBJECTS = $(SOURCES:.cpp=.o) # converts .cpp -> .o
+# target executable
 TARGET = main
-OBJECTS = main.cpp lexer.cpp token.cpp errorstack.cpp
 
 all: $(TARGET)
 
-$(TARGET): $(TARGET).cpp
+$(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $(TARGET) 
 	
+%.o: %.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
 
+clean:
+	rm -f $(OBJECTS) $(TARGET)
