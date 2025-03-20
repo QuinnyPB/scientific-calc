@@ -17,9 +17,7 @@ Token Token::constructToken(string &input){
 string Token::toString() {
   char c[literal.length() + 1];
   strcpy(c, literal.c_str());
-  // for (int i=0; i<literal.length()+1; i++) {
-  //   cout << c[i] << " "; 
-  // }
-  return "{TokenType: " + tokens_map.at(type) + ", Literal: " + c + "}\n";
+  
+  return "{TokenType: " + tokens_strings.at(type) + ", Literal: " + c + "}\n";
 }   
  

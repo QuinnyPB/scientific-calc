@@ -73,7 +73,6 @@ vector<Token> Lexer::tokenize() {
     if (peekChar() != 0) {
       readChar();
     } else {
-      cout << "returning tokens...\n";
       return tokens;
     }
   }

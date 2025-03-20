@@ -49,20 +49,31 @@ int calculator(string);
 int main() {
   // setting precedences for order of operations
   precedences.insert(pair<TokenType, int>(TokenType::CARET, 4)); 
-  precedences.insert(pair<TokenType, int>(TokenType::NEGATIVE, 4));
+  precedences.insert(pair<TokenType, int>(TokenType::NEGATIVE, 4)); // the negative unary
   precedences.insert(pair<TokenType, int>(TokenType::SLASH, 3)); 
   precedences.insert(pair<TokenType, int>(TokenType::ASTERISK, 3)); 
   precedences.insert(pair<TokenType, int>(TokenType::PLUS, 2)); 
   precedences.insert(pair<TokenType, int>(TokenType::MINUS, 2)); 
+  // this is needed to prevent map.at() error in handleOperatorPrecedenceSwap()
+  precedences.insert(pair<TokenType, int>(TokenType::LPAREN, 2)); 
 
   // for using test set
   tests();
 
   // for custom use
-  // while (true) { 
-  //   int res = calculator(""); 
-  //   printf("%d\n", res);
-  // }
+  while (true) { 
+    try
+    {
+      int res = calculator(""); 
+      printf("%d\n", res);
+    }
+    catch(const std::exception& e)
+    {
+      printf("Could not handle that expression!!\n");
+      std::cerr << e.what() << '\n';
+      errors_list.print_errors();
+    }    
+  }
 }
 
 int calculator(string input="")
@@ -140,24 +151,33 @@ int calculator(string input="")
       case TokenType::RPAREN:
         { 
           bool found=false;
-          cout << "found '('\n";
-          cout << "operators.top() = " << operators.top() << "\n";
-          while (operators.top() != '(') {
-            if (operators.empty() && found == false) {
-              string errstr = "calculator.switch-RPAREN: Error: Mismatched parentheses\n";
-              errors_list.add_error(errstr);
-              return 0;
-            }
-            output.push(queue_var(operators.top()));
-            operators.pop();
-            // NOTE: add functionality for handling functions
-            if (operators.top() == '(') {
-              found=true;
+
+          try {
+            while (operators.top() != '(') {
+              // check for mismatched parentheses 
+              if (operators.empty() && found == false) {
+                string errstr = "calculator.switch-RPAREN: Error: Mismatched parentheses\n";
+                errors_list.add_error(errstr);
+                return 0;
+              }
+              
+              output.push(queue_var(operators.top()));
               operators.pop();
-              printf("found )\noperators.top() = %c\n", operators.top());
-              break;
+  
+              // NOTE: add functionality for handling functions
+              if (operators.top() == '(') {
+                found=true;
+                operators.pop();
+                break;
+              }
             }
           }
+          catch(const std::exception& e)
+          {
+            std::cerr << e.what() << '\n';
+            errors_list.add_error("Error while looping operators for '('\n");
+          }
+          
         }
         break;
 
@@ -241,7 +261,7 @@ bool isUnary(char ch, int currIndex, vector<Token> *tokens) {
 }
 
 bool isOperator(string& ch) {
-  if (ch == "+" || ch == "-" || ch == "*" || ch == "/") {
+  if (ch == "+" || ch == "-" || ch == "*" || ch == "/" || ch == "%" ) {
     return true;
   }
   return false;
@@ -255,8 +275,7 @@ void handleOperator(char op, stack<queue_var> *stack) {
   try {
     if (op == 'n') {
       int& topNum = get<int>(stack->top());
-      topNum *= -1;
-      printf("topStack now %d\n", get<int>(stack->top()));
+      topNum = -topNum;
     } else {
       int right = get<int>(stack->top()); stack->pop();
       int left = get<int>(stack->top()); stack->pop();  
@@ -302,13 +321,15 @@ int applyOperator(int left, int right, char op) {
 void  handleOperatorPrecedenceSwap(TokenType currType, char op) {
   // pushes top of operator stack onto queue  
   int counter=0, operators_size = int(operators.size());
-  while (!operators.empty() || counter > operators_size) {
-    
+  while (
+    !operators.empty() || 
+    counter > operators_size  
+  ){    
     // represents top tokens on operator stack  
     TokenType topToken = getTokenType(operators.top());
     int topPrecedence = precedences.at(topToken);    
     counter++;
-    
+
     if (topToken != TokenType::LPAREN && 
       (topPrecedence > precedences.at(currType) || 
       (topPrecedence == precedences.at(currType) && getAssociativity(op) == 0)
@@ -348,7 +369,6 @@ void popStackToQueue() {
     string errstr("popStackToQueue(): counter (%d) exceeded hard limit of operators.size() (%d)", counter, operators_size);
     errors_list.add_error(errstr);
   }
-  // cout << "finished popping stack...\n";
 }
 
 TokenType getTokenType(char ch) {
@@ -477,7 +497,6 @@ void tests() {
     TestCase{"1 - 1", 0},
     TestCase{"1 * 1", 1},
     TestCase{"1 / 1", 1},
-    // TestCase{"+ 1", 1},
     TestCase{"1 + 2 + 3", 6},
     TestCase{"3 - 2 - 1", 0},
     TestCase{"1 * 2 * 3", 6},
@@ -492,24 +511,42 @@ void tests() {
     TestCase{"-1", -1},
     TestCase{"1 + -1", 0},
     TestCase{"1 * -1", -1},
-
+    TestCase{"1 + 4 + -1", 4},
+    TestCase{"10 + 2 * -1", 8},
+    TestCase{"-1 + -1", -2},
+    TestCase{"(1 + 1)", 2},
+    TestCase{"(1 + 1) * 4", 8},
+    TestCase{"(1 + 1) * (3 + 1)", 8},
+    TestCase{"((3 + 3) * 2) / (3 + 1)", 3},
+    TestCase{"((1 0 + 2 10) * 2) / (10 +      3     0)", 11},
   };
 
   for ( int i = 0; i < int(tests.size()); i++ ) {
-    printf("TEST: %s\n", tests[i].input.c_str());
-    int res = calculator(tests[i].input.c_str());
-        
-    if (res != tests[i].expected) {
-      printf("Test %d FAILED:\n\tinput: %s\n\texpected: %d\n\tgot=%d\n", i, tests[i].input.c_str(), tests[i].expected, res);
-
-      printf("List of errors:\n");
-      errors_list.print_errors();
-    } else {
-      printf("Test %d SUCCESS:\n\tinput: %s\n\tgot: %d\n", i, tests[i].input.c_str(), result);
+    try
+    {
+      printf("TEST: %s\n", tests[i].input.c_str());
+      int res = calculator(tests[i].input.c_str());
+          
+      if (res != tests[i].expected) {
+        printf("Test %d FAILED:\n\tinput: %s\n\texpected: %d\n\tgot=%d\n", i, tests[i].input.c_str(), tests[i].expected, res);
+  
+        printf("List of errors:\n");
+        errors_list.print_errors();
+      } else {
+        // printf("Test %d SUCCESS:\n\tinput: %s\n\tgot: %d\n", i, tests[i].input.c_str(), result);
+        printf("Test %d SUCCESS: Result == Expected : %d == %d\n", i, res, tests[i].expected);
+      }
+      // clears error list for new test set
+      printf("\n");
     }
-    // clears error list for new test set
+    catch(const std::exception& e)
+    {
+      errors_list.add_error("Error while looping tests...\n");
+      std::cerr << e.what() << '\n';
+      errors_list.print_errors();
+    }
+    
     errors_list.clear();
-    printf("\n");
   }
 
   return;
