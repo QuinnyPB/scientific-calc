@@ -107,6 +107,8 @@
     "list": "cpp",
     "variant": "cpp",
     "format": "cpp",
-    "span": "cpp"
+    "span": "cpp",
+    "charconv": "cpp",
+    "ctime": "cpp"
   }
 }

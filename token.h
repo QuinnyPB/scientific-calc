@@ -23,6 +23,24 @@ enum class TokenType {
   SPACE,
 };
 
+const std::unordered_map<TokenType, std::string> tokens_strings = {
+  {TokenType::NUMBER,       "TokenType::NUMBER"},
+  {TokenType::LPAREN,       "TokenType::LPAREN"},
+  {TokenType::RPAREN,       "TokenType::RPAREN"},
+  {TokenType::PLUS,         "TokenType::PLUS"},
+  {TokenType::MINUS,        "TokenType::MINUS"},  
+  {TokenType::SLASH,        "TokenType::SLASH"},
+  {TokenType::ASTERISK,     "TokenType::ASTERISK"},
+  {TokenType::CARET,        "TokenType::CARET"},
+  {TokenType::NEGATIVE,     "TokenType::NEGATIVE"},
+  {TokenType::PERCENT,      "TokenType::PERCENT"},
+  {TokenType::SPACE,        "TokenType::SPACE"},
+  {TokenType::QUESTIONMARK, "TokenType::QUESTIONMARK"},
+  {TokenType::CLEAR,        "TokenType::CLEAR"},
+  {TokenType::UNKNOWN,      "TokenType::UNKNOWN"},
+  {TokenType::END,          "TokenType::END"},
+};
+
 const std::unordered_map<TokenType, std::string> tokens_map = {
   {TokenType::NUMBER, "NUMBER"},
   {TokenType::LPAREN, "("},
