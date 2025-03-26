@@ -50,9 +50,11 @@ vector<Token> Lexer::tokenize() {
     // check if is illegal letter
     // NOTE: REWRITE THIS FOR FUTURE SCIENCE FUNCTIONS
       if (isLetter(ch)) {
-        // cout << "is letter\n";   
+        string str = readWord();
+        
+        
         t = Token(TokenType::UNKNOWN, ch);
-
+        
       } 
       else if (isDigit(ch)) {
         t.type = TokenType::NUMBER;          
@@ -123,6 +125,15 @@ string Lexer::readNumber() {
   return input.substr(pos, curr - pos);
 }
 
+string Lexer::readWord(){
+  string s;
+  int pos = curr;
+  while (curr < int(input.length()) && isLetter(input.at(curr))) {
+    readChar();
+  }
+  return input.substr(pos, curr - pos);
+}
+
 void Lexer::skipwhitespace() {
   while (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
     readChar();
@@ -132,6 +143,7 @@ void Lexer::skipwhitespace() {
 bool Lexer::isLetter(char ch) {
   return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ch == '_'; 
 }
+
 
 bool Lexer::isDigit(char ch) {
   return '0' <= ch && ch <= '9';

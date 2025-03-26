@@ -16,6 +16,7 @@ class Lexer {
     Lexer(){};
     Lexer(std::string &input);
     std::string readNumber();
+    std::string readWord();
     std::vector<Token> tokenize();
     void readChar();  
     char peekChar();

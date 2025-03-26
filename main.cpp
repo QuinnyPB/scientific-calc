@@ -17,6 +17,13 @@ ostream& operator<<(ostream& os, const queue_var& qv) {
   return os;
 }
 
+// advanced operators
+enum class AdvOp { 
+  MODULO,
+};
+
+const std::unordered_map<AdvOp, string> adv_operations;
+
 // function initialisationg
 void handleOperatorPrecedenceSwap(TokenType, char);
 void handleFunctionCall();
@@ -54,8 +61,8 @@ int main() {
   precedences.insert(pair<TokenType, int>(TokenType::ASTERISK, 3)); 
   precedences.insert(pair<TokenType, int>(TokenType::PLUS, 2)); 
   precedences.insert(pair<TokenType, int>(TokenType::MINUS, 2)); 
-  // this is needed to prevent map.at() error in handleOperatorPrecedenceSwap()
-  precedences.insert(pair<TokenType, int>(TokenType::LPAREN, 2)); 
+  
+  precedences.insert(pair<TokenType, int>(TokenType::LPAREN, 2));  // this is needed to prevent map.at() error in handleOperatorPrecedenceSwap()
 
   // for using test set
   tests();
@@ -316,9 +323,24 @@ int applyOperator(int left, int right, char op) {
   }
 }
 
+// application of other operators e.g. modulo 
+int applyOperator(int left, int right, string op) {
+
+  // switch (expression)
+  // {
+  // case constant expression:
+  //   /* code */
+  //   break;
+  
+  // default:
+  //   break;
+  // }
+  return 0;
+}
+
 // handles the functionality of swapping and taking operators off the operator stack if 
 // they are same precedence
-void  handleOperatorPrecedenceSwap(TokenType currType, char op) {
+void handleOperatorPrecedenceSwap(TokenType currType, char op) {
   // pushes top of operator stack onto queue  
   int counter=0, operators_size = int(operators.size());
   while (
@@ -534,7 +556,7 @@ void tests() {
         errors_list.print_errors();
       } else {
         // printf("Test %d SUCCESS:\n\tinput: %s\n\tgot: %d\n", i, tests[i].input.c_str(), result);
-        printf("Test %d SUCCESS: Result == Expected : %d == %d\n", i, res, tests[i].expected);
+        printf("Test %d SUCCESS: expected=%d, got=%d\n", i, res, tests[i].expected);
       }
       // clears error list for new test set
       printf("\n");

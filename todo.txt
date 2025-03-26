@@ -1,0 +1,20 @@
+DONE:
+Lexer
+Operator modifier 
+Operator precedence 
+Test cases
+Unary handling
+Parentheses
+
+
+IN PROGRESS:
+Reverse Polish algorithm (still require function handling)
+Bigger data types (e.g. longs, floats, doubles)
+Modulo operation
+Parser for function names
+Trigonometric functions
+Logarithm functions
+Exponentials
+Statistics
+Fractions
+Terminal to Interactive UI
