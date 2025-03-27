@@ -17,12 +17,12 @@ bool operator!=(const Token& lhs, const Token& rhs) {
 void Parser::parse() {
   while (curr < tokens.size()) {
 
-    switch (currToken->type) {
-    case 
-    default:
-      cout << "Do not know how to handle '" << currToken->toString() << "'\n";
-      break;
-    }
+    // switch (currToken->type) {
+    // case 
+    // default:
+    //   cout << "Do not know how to handle '" << currToken->toString() << "'\n";
+    //   break;
+    // }
   }  
 }
 

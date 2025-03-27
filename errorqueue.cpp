@@ -21,7 +21,7 @@ void ErrorQueue::print_errors() {
 };
 
 void ErrorQueue::clear() {
-  for (int i=0; i<errors.size(); i++) {
+  for (double i=0; i<errors.size(); i++) {
     errors.pop();
   }
 }

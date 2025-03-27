@@ -7,12 +7,18 @@
 #include <format>
 #include "lexer.h"
 #include "errorqueue.h"
+#include "Fraction.h"
+
+// Explanation of class T
+// I have designed this program with the idea that it will use either int or Fraction(int, int) so far
 
 using namespace std;
 // used for output queue, so operators and numbers can go onto it e.g. '+' and 1234
-using queue_var = variant<int, char>;
+template <class T>
+using queue_var = variant<typename std::decay_t<T>::type, char>; // typename... is necessary for avoiding an Internal Compiler Error due to std::variant usage
 
-ostream& operator<<(ostream& os, const queue_var& qv) {
+template <class T>
+ostream& operator<<(ostream& os, const queue_var<T>& qv) {
   std::visit([&os](auto&& arg) { os << arg; }, qv);
   return os;
 }
@@ -25,33 +31,44 @@ enum class AdvOp {
 const std::unordered_map<AdvOp, string> adv_operations;
 
 // function initialisationg
+template <class T>
+T calculator(string input = "", T type = T());
+template <class T>
 void handleOperatorPrecedenceSwap(TokenType, char);
 void handleFunctionCall();
+template <class T>
 void popStackToQueue();
 TokenType getTokenType(char);
 bool isUnary(char, int, vector<Token>*);
 bool isOperator(string&);
-void handleOperator(char, stack<queue_var> *stack);
-int applyOperator(int, int, char);
+template <class T>
+void handleOperator(char, stack<queue_var<T>> *stack);
+template <class T>
+T applyOperator(T, T, char);
 int getAssociativity(char);
 void printHelp();
 void clearInput();
-void print_queue(queue<queue_var>);
-void print_stack(stack<queue_var>);
-string queue_to_string(queue<queue_var>);
-string stack_to_string(stack<queue_var>);
+template <class T>
+void print_queue(queue<queue_var<T>>);
+template <class T>
+void print_stack(stack<queue_var<T>>);
+template <class T>
+string queue_to_string(queue<queue_var<T>>);
+template <class T>
+string stack_to_string(stack<queue_var<T>>);
 void tests();
 
 // global data structures
 ErrorQueue errors_list = ErrorQueue(); 
 stack<char> operators;
-queue<queue_var> output;
+template <class T>
+queue<queue_var<T>> output;
 map<TokenType, int> precedences;  
-int result;
+double result;
 bool previousIsNumber=false;
 bool isCustomInput=false;
 
-int calculator(string);
+
 
 int main() {
   // setting precedences for order of operations
@@ -71,8 +88,14 @@ int main() {
   while (true) { 
     try
     {
-      int res = calculator(""); 
-      printf("%d\n", res);
+      // change this value for different types
+      // Fraction f(1, 1);
+      // Fraction res = calculator("", i); 
+      // printf("%s\n", res); // Fraction()
+      
+      int i = 1;
+      int res = calculator("", i); 
+      printf("%d\n", res); // int
     }
     catch(const std::exception& e)
     {
@@ -83,7 +106,8 @@ int main() {
   }
 }
 
-int calculator(string input="")
+template <class T>
+T calculator(string input, T type)
 {
   vector<Token> tokens;
   
@@ -116,39 +140,39 @@ int calculator(string input="")
       case TokenType::NUMBER:
         // correct for incorrect user spacing between numbers
         if (previousIsNumber) {
-          int x = get<int>(output.back());
+          T x = get<T>(output<T>.back());
           string str = to_string(x);
           str += tok.literal;
-          output.back() = queue_var(stoi(str));
+          output<T>.back() = queue_var(stod(str));
         } else {
-          output.push(queue_var(stoi(tok.literal))); // type enforces number into int
+          output<T>.push(queue_var(stod(tok.literal))); // type enforces number into double
         }
         previousIsNumber=true;
         break;
 
       case TokenType::PLUS:
-        handleOperatorPrecedenceSwap(TokenType::PLUS, op);
+        handleOperatorPrecedenceSwap<T>(TokenType::PLUS, op);
         break;
 
       case TokenType::MINUS:
         // check if unary, make negative by pushing 'n' 
         if (isUnary(op, i, &tokens)) {
-          handleOperatorPrecedenceSwap(TokenType::NEGATIVE, 'n');
+          handleOperatorPrecedenceSwap<T>(TokenType::NEGATIVE, 'n');
         } else {
           // check if top has precedence, then pop
-          handleOperatorPrecedenceSwap(TokenType::MINUS, op);
+          handleOperatorPrecedenceSwap<T>(TokenType::MINUS, op);
         }
-          // handleOperatorPrecedenceSwap(TokenType::MINUS, op);
+          // handleOperatorPrecedenceSwap<T>(TokenType::MINUS, op);
         break;
 
       case TokenType::ASTERISK:
         // check if top has precedence, then pop
-        handleOperatorPrecedenceSwap(TokenType::ASTERISK, op);
+        handleOperatorPrecedenceSwap<T>(TokenType::ASTERISK, op);
         break;
 
       case TokenType::SLASH:
         // check if top has precedence, then pop
-        handleOperatorPrecedenceSwap(TokenType::SLASH, op);
+        handleOperatorPrecedenceSwap<T>(TokenType::SLASH, op);
         break;
 
       case TokenType::LPAREN:
@@ -168,7 +192,7 @@ int calculator(string input="")
                 return 0;
               }
               
-              output.push(queue_var(operators.top()));
+              output<T>.push(queue_var(operators.top()));
               operators.pop();
   
               // NOTE: add functionality for handling functions
@@ -202,7 +226,7 @@ int calculator(string input="")
       case TokenType::END:
         // pop entire operator stack to output   
         errors_list.add_error("Popping stack to queue...");
-        popStackToQueue();
+        popStackToQueue<T>();
         break;
       
       default:
@@ -214,26 +238,26 @@ int calculator(string input="")
     previousIsNumber=false;
       
     // POP OFF QUEUE AND APPLY OPERATORS
-    stack<queue_var> stack;
+    stack<queue_var<T>> stack;
     // pop queue one by one into new stack and apply operators onto last two elements as they come    
-    while (!output.empty()) {    
-      errors_list.add_error("Queue: " + queue_to_string(output));
-      errors_list.add_error("Stack: " + stack_to_string(stack));
+    while (!output<T>.empty()) {    
+      errors_list.add_error("Queue: " + queue_to_string<T>(output<T>));
+      errors_list.add_error("Stack: " + stack_to_string<T>(stack));
       
       // if output.top is number, push to stack
-      if (holds_alternative<int>(output.front())) {
-        stack.push(output.front());        
-        output.pop();
+      if (holds_alternative<double>(output<T>.front())) {
+        stack.push(output<T>.front());        
+        output<T>.pop();
       } 
-      // if output.top is operator, handle that operator type
+      // if output<T>.top is operator, handle that operator type
       // take two off stack, do operation, push back onto stack
       else {
         // calculate value and push back onto stack
-        char op = get<char>(output.front()); output.pop();
-        handleOperator(op, &stack);           
+        char op = get<char>(output<T>.front()); output<T>.pop();
+        handleOperator<T>(op, &stack);           
       } 
     } // END INNER WHILE
-    result = get<int>(stack.top()); stack.pop();   
+    result = get<T>(stack.top()); stack.pop();   
 
     // clears cin buffer
     cin.clear();
@@ -275,24 +299,25 @@ bool isOperator(string& ch) {
 }
 
 // handles operator functionality
-void handleOperator(char op, stack<queue_var> *stack) {
-  // string errstr("handling operator '%c' (ASCII: %d)\n", op, op);
+template <class T>
+void handleOperator(char op, stack<queue_var<T>> *stack) {
+  // string errstr("handling operator '%c' (ASCII: %f)\n", op, op);
   // errors_list.add_error(errstr);
 
   try {
     if (op == 'n') {
-      int& topNum = get<int>(stack->top());
+      T& topNum = get<T>(stack->top());
       topNum = -topNum;
     } else {
-      int right = get<int>(stack->top()); stack->pop();
-      int left = get<int>(stack->top()); stack->pop();  
+      T right = get<T>(stack->top()); stack->pop();
+      T left = get<T>(stack->top()); stack->pop();  
       queue_var res = applyOperator(left, right, op);  
       stack->push(res);
     }
   }
   catch(const std::exception& e) {
-    // printf("Cannot handle operator '%c' (ASCII: %d)\n", op, op);
-    string errstr("handleOperator(): Cannot handle operator '%c' (ASCII: %d)", op, op);
+    // printf("Cannot handle operator '%c' (ASCII: %f)\n", op, op);
+    string errstr("handleOperator(): Cannot handle operator '%c' (ASCII: %f)", op, op);
     errors_list.add_error(errstr);
     std::cerr << e.what() << '\n';
   } 
@@ -300,7 +325,8 @@ void handleOperator(char op, stack<queue_var> *stack) {
 }
 
 // actual application of an operator onto given values
-int applyOperator(int left, int right, char op) {
+template <class T>
+int applyOperator(T left, T right, char op) {
   printf("%d %c %d\n", left, op, right);
   switch (op) {
   case '+':
@@ -311,35 +337,21 @@ int applyOperator(int left, int right, char op) {
     return left * right;
   case '/':
     return left / right;
-  case '%':
-    return left % right;
+  // case '%':
+  //   return left % right;
 
   default:
-    // printf("Unknown operator '%c' (ASCII: %d)\n", op, op);
-    string errstr("applyOperator(): Unknown operator '%c' (ASCII: %d)", op, op);
+    // printf("Unknown operator '%c' (ASCII: %f)\n", op, op);
+    string errstr("applyOperator(): Unknown operator '%c' (ASCII: %f)", op, op);
     errors_list.add_error(errstr);
     
     return 0;
   }
 }
 
-// application of other operators e.g. modulo 
-int applyOperator(int left, int right, string op) {
-
-  // switch (expression)
-  // {
-  // case constant expression:
-  //   /* code */
-  //   break;
-  
-  // default:
-  //   break;
-  // }
-  return 0;
-}
-
 // handles the functionality of swapping and taking operators off the operator stack if 
 // they are same precedence
+template <class T>
 void handleOperatorPrecedenceSwap(TokenType currType, char op) {
   // pushes top of operator stack onto queue  
   int counter=0, operators_size = int(operators.size());
@@ -357,7 +369,7 @@ void handleOperatorPrecedenceSwap(TokenType currType, char op) {
       (topPrecedence == precedences.at(currType) && getAssociativity(op) == 0)
       )
     ) {
-      output.push(queue_var(operators.top()));
+      output<T>.push(queue_var(operators.top()));
       operators.pop();
       continue;
     } 
@@ -367,7 +379,7 @@ void handleOperatorPrecedenceSwap(TokenType currType, char op) {
 
   // error check
   if (counter > operators_size) {
-    string errstr("handleOperatorPrecedenceSwap(): counter exceeded hard limit operators.size() (%d)", operators_size);
+    string errstr("handleOperatorPrecedenceSwap(): counter exceeded hard limit operators.size() (%f)", operators_size);
     errors_list.add_error(errstr);
   }
   
@@ -380,15 +392,16 @@ void handleOperatorPrecedenceSwap(TokenType currType, char op) {
 void handleFunctionCall() {}
 
 // pop entire stack onto queue
+template <class T>
 void popStackToQueue() {
   int counter = 0, operators_size = int(operators.size());
   while (!operators.empty() || counter > operators_size) {
-    output.push(queue_var(operators.top()));
+    output<T>.push(queue_var(operators.top()));
     operators.pop();
     counter++;
   }
   if (counter > operators_size) {
-    string errstr("popStackToQueue(): counter (%d) exceeded hard limit of operators.size() (%d)", counter, operators_size);
+    string errstr("popStackToQueue(): counter (%f) exceeded hard limit of operators.size() (%f)", counter, operators_size);
     errors_list.add_error(errstr);
   }
 }
@@ -444,9 +457,10 @@ void clearInput() {
 }
 
 // Print the queue
-void print_queue(queue<queue_var> q)
+template <class T>
+void print_queue(queue<queue_var<T>> q)
 {
-    queue<queue_var> temp = q;
+    queue<queue_var<T>> temp = q;
     while (!temp.empty()) {
         // print for chars
       cout << temp.front() <<" ";
@@ -456,9 +470,10 @@ void print_queue(queue<queue_var> q)
 }
 
 // Print the stack
-void print_stack(stack<queue_var> q)
+template <class T>
+void print_stack(stack<queue_var<T>> q)
 {
-  stack<queue_var> temp = q;
+  stack<queue_var<T>> temp = q;
   while (!temp.empty()) {
     // print for chars
     cout << temp.top() <<" ";
@@ -467,15 +482,16 @@ void print_stack(stack<queue_var> q)
   cout << '\n';
 }
 
-string queue_to_string(queue<queue_var> q) {
-  queue<queue_var> temp = q;
+template <class T>
+string queue_to_string(queue<queue_var<T>> q) {
+  queue<queue_var<T>> temp = q;
   string str;
   while (!temp.empty()) {
     // print for chars
 
-    // either an int or char
-    if (holds_alternative<int>(temp.front())) {
-      int curr = get<int>(temp.front()); 
+    // either an double or char
+    if (holds_alternative<T>(temp.front())) {
+      T curr = get<T>(temp.front()); 
       str += to_string(curr);
     } else {
       char curr = get<char>(temp.front());
@@ -488,13 +504,14 @@ string queue_to_string(queue<queue_var> q) {
   return str;
 }
 
-string stack_to_string(stack<queue_var> q) {
-  stack<queue_var> temp = q;
+template <class T>
+string stack_to_string(stack<queue_var<T>> q) {
+  stack<queue_var<T>> temp = q;
   string str;
   while (!temp.empty()) {
-    // either an int or char
-    if (holds_alternative<int>(temp.top())) {
-      int curr = get<int>(temp.top()); 
+    // either an double or char
+    if (holds_alternative<T>(temp.top())) {
+      T curr = get<T>(temp.top()); 
       str += to_string(curr);
     } else {
       char curr = get<char>(temp.top());
@@ -507,11 +524,13 @@ string stack_to_string(stack<queue_var> q) {
   return str;
 }
 
+
 struct TestCase {
   string input;
   int expected;
 };
 
+template <class T>
 void tests() {
   vector<TestCase> tests = {
     TestCase{"1", 1},
@@ -547,16 +566,16 @@ void tests() {
     try
     {
       printf("TEST: %s\n", tests[i].input.c_str());
-      int res = calculator(tests[i].input.c_str());
+      int res = calculator(tests[i].input.c_str(), i);
           
       if (res != tests[i].expected) {
-        printf("Test %d FAILED:\n\tinput: %s\n\texpected: %d\n\tgot=%d\n", i, tests[i].input.c_str(), tests[i].expected, res);
+        printf("Test %f FAILED:\n\tinput: %s\n\texpected: %f\n\tgot=%f\n", i, tests[i].input.c_str(), tests[i].expected, res);
   
         printf("List of errors:\n");
         errors_list.print_errors();
       } else {
-        // printf("Test %d SUCCESS:\n\tinput: %s\n\tgot: %d\n", i, tests[i].input.c_str(), result);
-        printf("Test %d SUCCESS: expected=%d, got=%d\n", i, res, tests[i].expected);
+        // printf("Test %f SUCCESS:\n\tinput: %s\n\tgot: %f\n", i, tests[i].input.c_str(), result);
+        printf("Test %f SUCCESS: expected=%f, got=%f\n", i, res, tests[i].expected);
       }
       // clears error list for new test set
       printf("\n");

@@ -4,7 +4,7 @@
 CC = g++
 CFLAGS = -g -Wall -std=c++20
 # sources and object files
-SOURCES = main.cpp lexer.cpp token.cpp errorqueue.cpp
+SOURCES = main.cpp Fraction.cpp lexer.cpp token.cpp errorqueue.cpp
 OBJECTS = $(SOURCES:.cpp=.o) # converts .cpp -> .o
 # target executable
 TARGET = main

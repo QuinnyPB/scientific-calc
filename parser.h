@@ -21,8 +21,8 @@ map<char, OPERATIONS> operationTypes = {
 
 class Parser {
   vector<Token> tokens;
-  int curr;
-  int next;
+  double curr;
+  double next;
   Token* currToken;
   
   public:

@@ -8,8 +8,8 @@
 
 class Lexer {
   std::string input;
-  int curr = 0;
-  int next = 0;
+  double curr = 0;
+  double next = 0;
   char ch;
 
   public:
